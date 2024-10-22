@@ -88,8 +88,8 @@ target/
 # Mypy cache
 .mypy_cache/
 
+model
 myenv
-models
 reports
 
 /notebooks/mlruns
