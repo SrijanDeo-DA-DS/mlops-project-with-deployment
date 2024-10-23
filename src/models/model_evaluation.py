@@ -6,6 +6,13 @@ import logging
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from typing import Dict, Any
+import mlflow
+import mlflow.sklearn
+import dagshub
+
+mlflow.set_tracking_uri('https://dagshub.com/SrijanDeo-DA-DS/mlops-project-with-deployment.mlflow')
+
+dagshub.init(repo_owner='SrijanDeo-DA-DS', repo_name='mlops-project-with-deployment', mlflow=True)
 
 # Set up logging
 logging.basicConfig(
@@ -93,6 +100,9 @@ def main() -> None:
     """
     Main function to load the model, evaluate it, and save the metrics.
     """
+
+    mlflow.set_experiment("dvc-pipeline")
+    mlflow.start_run()
     try:
         logging.info("Starting model evaluation pipeline.")
         
@@ -109,7 +119,32 @@ def main() -> None:
         
         save_metrics(metrics, 'reports/metrics.json')
         logging.info("Model evaluation completed and metrics saved.")
-    
+
+        # log metrics to Mlflow
+        for metric_name, metric_value in metrics.items():
+            mlflow.log_metric(metric_name, metric_value)
+
+        # log model paramters to MLflow
+        # Log model parameters to MLflow
+        if hasattr(rf, 'get_params'):
+            params = rf.get_params()
+            for param_name, param_value in params.items():
+                mlflow.log_param(param_name, param_value)
+
+        # Log model to MLflow
+        mlflow.sklearn.log_model(rf, "model")
+            
+        # Save model info
+        save_model_info(run.info.run_id, "model", 'reports/experiment_info.json')
+            
+        # Log the metrics file to MLflow
+        mlflow.log_artifact('reports/metrics.json')
+
+        # Log the model info file to MLflow
+        mlflow.log_artifact('reports/model_info.json')
+
+        # Log the evaluation errors log file to MLflow
+        mlflow.log_artifact('model_evaluation_errors.log')
     except FileNotFoundError as e:
         logging.error(f"File not found during execution: {e}")
         raise
